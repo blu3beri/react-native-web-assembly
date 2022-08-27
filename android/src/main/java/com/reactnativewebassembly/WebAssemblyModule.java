@@ -1,15 +1,31 @@
 package com.reactnativewebassembly;
 
-import androidx.annotation.NonNull;
+import android.util.Log;
 
-import com.facebook.react.bridge.Promise;
+import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.facebook.proguard.annotations.DoNotStrip;
+
+import com.facebook.react.bridge.JavaScriptContextHolder;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.turbomodule.core.CallInvokerHolderImpl;
+import com.facebook.react.turbomodule.core.interfaces.CallInvokerHolder;
 
-@ReactModule(name = WebAssemblyModule.NAME)
-public class WebAssemblyModule extends NativeWebAssemblySpec {
+@Keep
+@DoNotStrip
+public class WebAssemblyModule extends ReactContextBaseJavaModule {
+    static {
+      System.loadLibrary("reactnativewebassembly");
+    }
+
     public static final String NAME = "WebAssembly";
+
+    static String TAG = "WebAssembly";
 
     public WebAssemblyModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -18,13 +34,23 @@ public class WebAssemblyModule extends NativeWebAssemblySpec {
     @Override
     @NonNull
     public String getName() {
-        return NAME;
+        return TAG;
     }
 
-    // Example method
-    // See https://reactnative.dev/docs/native-modules-android
-    @Override
-    public double multiply(double a, double b) {
-        return a * b;
+    private static native void installNative(long jsiRuntimePointer, CallInvokerHolderImpl jsCallInvokerHolder);
+
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    public boolean install() {
+      try {
+        System.loadLibrary("reactnativewebassembly");
+        ReactContext context = getReactApplicationContext();
+        long jsContextPointer = context.getJavaScriptContextHolder().get();
+        CallInvokerHolderImpl holder = (CallInvokerHolderImpl) context.getCatalystInstance().getJSCallInvokerHolder();
+        installNative(jsContextPointer, holder);
+        return true;
+      } catch (Exception exception) {
+        Log.e(NAME, "Failed to install JSI Bindings!", exception);
+        return false;
+      }
     }
 }

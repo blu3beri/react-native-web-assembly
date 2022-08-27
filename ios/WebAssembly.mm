@@ -1,30 +1,33 @@
+#import "turboModuleUtility.h"
+
 #import "WebAssembly.h"
+#import <React/RCTBridge+Private.h>
+#import <jsi/jsi.h>
+#import <React/RCTUtils.h>
+#import <ReactCommon/RCTTurboModule.h>
 
-#ifdef RCT_NEW_ARCH_ENABLED
-#import "RNWebAssemblySpec.h"
-#endif
+using namespace facebook;
 
-@implementation WebAssembly
+@implementation WebAssembly : NSObject
+
 RCT_EXPORT_MODULE()
 
-// Example method
-// See // https://reactnative.dev/docs/native-modules-ios
-RCT_REMAP_BLOCKING_SYNCHRONOUS_METHOD(multiply,
-                                      NSNumber *,
-                                      multiplyWithA:(double)a  withB:(double)b)
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install)
 {
-    NSNumber *result = @(a * b);
-
-    return result;
+    RCTBridge* bridge = [RCTBridge currentBridge];
+    RCTCxxBridge* cxxBridge = (RCTCxxBridge*)bridge;
+    if (cxxBridge == nil) {
+        return @false;
+    }
+    
+    jsi::Runtime* jsiRuntime = (jsi::Runtime*) cxxBridge.runtime;
+    if (jsiRuntime == nil) {
+        return @false;
+    }
+    
+    auto callInvoker = bridge.jsCallInvoker;
+    turboModuleUtility::registerTurboModule(*jsiRuntime, callInvoker);
+    return @true;
 }
-
-// Don't compile this code when we build for the old architecture.
-#ifdef RCT_NEW_ARCH_ENABLED
-- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
-    (const facebook::react::ObjCTurboModule::InitParams &)params
-{
-    return std::make_shared<facebook::react::NativeWebAssemblySpecJSI>(params);
-}
-#endif
 
 @end
