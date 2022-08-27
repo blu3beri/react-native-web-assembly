@@ -7,6 +7,9 @@ FunctionMap TurboModuleHostObject::functionMapping(jsi::Runtime &rt) {
   FunctionMap fMap;
 
   fMap.insert(std::make_tuple("version", &webAssembly::version));
+  fMap.insert(std::make_tuple("compile", &webAssembly::compile));
+  fMap.insert(std::make_tuple("testing", &webAssembly::testing));
+    
 
   return fMap;
 }
