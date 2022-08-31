@@ -21,7 +21,7 @@ Pod::Spec.new do |s|
 
   s.ios.vendored_frameworks = "ios/Frameworks/libwasmer.xcframework"
 
-  s.source_files = "ios/**/*.{h,m,mm}", "cpp/**/*.{h,cpp}"
+  s.source_files = "ios/**/*.{h,m,mm}", "cpp/**/*.{h,cpp,hh}"
   
   s.dependency "React-Core"
   s.dependency "React-callinvoker"

@@ -35,6 +35,6 @@ T jsiToValue(jsi::Runtime &rt, jsi::Object &options, const char *name,
              bool optional = false);
 
 // Handles an error from within the module and sends it back to the js side
-void handleError(jsi::Runtime &rt, ErrorCode code);
+void handleError(jsi::Runtime &rt);
 
 } // namespace turboModuleUtility

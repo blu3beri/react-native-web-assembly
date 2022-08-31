@@ -1,7 +1,9 @@
 #include <webAssembly.h>
 #include "include/wasmer.h"
+#include "include/wasm.hh"
 
 using namespace turboModuleUtility;
+using namespace wasm;
 
 namespace webAssembly {
 
@@ -11,51 +13,38 @@ jsi::Value version(jsi::Runtime &rt, jsi::Object options) {
 };
 
 jsi::Value compile(jsi::Runtime &rt, jsi::Object options) {
-  wasm_byte_vec_t wasm_bytes = jsiToValue<wasm_byte_vec_t>(rt, options, "wasm_bytes");
-
-  wasm_engine_t* engine = wasm_engine_new();
-  wasm_store_t* store = wasm_store_new(engine);
-
-  wasm_module_t* module = wasm_module_new(store, &wasm_bytes);
+  const vec<char> wasm_bytes = jsiToValue<vec<char>>(rt, options, "wasm_bytes");
     
+  own<Engine> engine = Engine::make();
+  own<Store> store = Store::make(engine.get());
+  own<Module> module = Module::make(store.get(), wasm_bytes);
+
   if (!module) {
-    int error_len = wasmer_last_error_length();
-    char *error_str = (char*)malloc(error_len);
-    wasmer_last_error_message(error_str, error_len);
-    printf("Error str: `%s`\n", error_str);
-    throw jsi::JSError(rt, error_str);
+    handleError(rt);
   }
-
-    wasm_extern_vec_t import_object = WASM_EMPTY_VEC;
-    wasm_instance_t* instance = wasm_instance_new(store, module, &import_object, NULL);
     
-    if (!instance) {
-      int error_len = wasmer_last_error_length();
-      char *error_str = (char*)malloc(error_len);
-      wasmer_last_error_message(error_str, error_len);
-      printf("Error str: `%s`\n", error_str);
-      throw jsi::JSError(rt, error_str);
-    }
+  const vec<Extern*> import_object = vec<Extern*>::make();
+  own<Instance> instance = Instance::make(store.get(), module.get(), import_object);
     
-    // TODO: are these in sync?
-    wasm_exporttype_vec_t export_types;
-    wasm_module_exports(module, &export_types);
-    wasm_extern_vec_t exports;
-    wasm_instance_exports(instance, &exports);
+  if (!instance) {
+    handleError(rt);
+  }
+    
+  // TODO: are these in sync?
+  ownvec<Extern> exports = instance.get()->exports();
+  ownvec<ExportType>exportTypes = module.get()->exports();
+      
     
     jsi::Object object = jsi::Object(rt);
     
-    auto x = export_types.size;
-    auto y = exports.size;
-    
-    for(int i = 0; i < exports.size; i++) {
+    for(int i = 0; i < exports.size(); i++) {
         wasm_func_t* func = wasm_extern_as_func(exports.data[i]);
         wasm_exporttype_t* export_type = export_types.data[i];
-        
+
         wasm_functype_t* type = wasm_func_type(func);
         const wasm_name_t* export_name = wasm_exporttype_name(export_type);
         const char* name = (const char*)export_name->data;
-        
+
         auto funcie = jsi::Function::createFromHostFunction(
                   rt,
                   jsi::PropNameID::forAscii(rt, name),
@@ -67,14 +56,14 @@ jsi::Value compile(jsi::Runtime &rt, jsi::Object options) {
                     //       2. convert them to WASMER arguments
                     //       3. call the function
                     //       4. jsi-ify the return value
-                      
+
                     // TODO: we need to know which arguments are needed by the wasm function
                     for(int j = 0; j<count;j++) {
                       if(!args[j].isNumber()) {
                         throw jsi::JSError(rt, "only number");
                       }
                     }
-                
+
                     // TODO: for now we assume a single return value (maybe we can use wasmer to detect these things)
                     wasm_val_t results_val[1] = { WASM_INIT_VAL };
                     wasm_val_vec_t wasm_args = WASM_ARRAY_VEC(args_val);
